@@ -1,0 +1,13 @@
+# macOS 시스템 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+
+.env
+/.fleet
+/.idea
+/.vscode
+
+logs/
+log/
+temp/
