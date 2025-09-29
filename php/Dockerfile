@@ -2,7 +2,8 @@ FROM php:8.3-fpm-alpine
 
 RUN apk add --no-cache \
     git zip unzip bash icu-dev libzip-dev oniguruma-dev curl-dev libpng-dev \
-    mariadb-connector-c-dev autoconf g++ make
+    mariadb-connector-c-dev autoconf g++ make \
+    mariadb-client
 
 RUN docker-php-ext-install pdo pdo_mysql mbstring intl zip gd
 
