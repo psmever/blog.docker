@@ -19,12 +19,13 @@ services:
       context: ./php
     container_name: blog-php
     environment:
-      APP_ENV: local
+      APP_ENV: local             # 개발환경일 때만 migrate 실행됨
     volumes:
       - ../blog.backend:/var/www/html:cached
       - ${MY_BACKEND_ENV_FILE:-./../blog.backend/.env}:/var/www/html/.env:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - blognet
 
@@ -60,9 +61,14 @@ services:
     volumes:
       - dbdata:/var/lib/mysql
     ports:
-      - "5306:3306"
+      - "3306:3306"
     networks:
       - blognet
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$${MARIADB_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
 
 networks:
   blognet:
