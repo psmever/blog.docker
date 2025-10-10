@@ -1,19 +1,36 @@
 #!/usr/bin/env sh
 set -e
 
-# DB 준비 대기
+echo "🚀 Laravel Entrypoint Starting..."
+
+# DB 연결 대기
 until php -r "exit(fsockopen(getenv('DB_HOST') ?: 'db', getenv('DB_PORT') ?: 3306) ? 0 : 1);"; do
   echo "⏳ waiting for database..."
   sleep 2
 done
 
-# 개발 환경일 때만 migrate 실행
+# composer install (최초만)
+if [ ! -d "vendor" ]; then
+  echo "📦 Installing composer dependencies..."
+  composer install --no-interaction --prefer-dist
+else
+  echo "✅ Composer dependencies already installed."
+fi
+
+# 개발환경에서 자동 migrate
 if [ "$APP_ENV" = "local" ]; then
   echo "🚀 Running migrations in local env..."
   php artisan migrate --force || true
-else
-  echo "ℹ️ APP_ENV=$APP_ENV → skip migrations"
 fi
 
-# php-fpm 실행
+# ⚙️ artisan 명령 모드 감지
+if [ "$1" = "php" ] && [ "$2" = "artisan" ]; then
+  echo "🧩 Detected artisan command → skip php-fpm"
+  shift 2
+  php artisan "$@"
+  exit 0
+fi
+
+# ✅ 웹 서버 모드일 경우에만 PHP-FPM 실행
+echo "✅ Starting PHP-FPM..."
 exec php-fpm
