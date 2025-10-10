@@ -4,7 +4,7 @@ services:
     image: nginx:1.27-alpine
     container_name: blog-nginx
     ports:
-      - "4000:80"                  # ← http://localhost:4000
+      - "4000:80"  # → http://localhost:4000
     depends_on:
       - php
     volumes:
@@ -19,10 +19,10 @@ services:
       context: ./php
     container_name: blog-php
     environment:
-      APP_ENV: local             # 개발환경일 때만 migrate 실행됨
+      APP_ENV: local  # 개발 환경일 때만 migrate 실행됨
     volumes:
       - ../blog.backend:/var/www/html:cached
-      - ${MY_BACKEND_ENV_FILE:-./../blog.backend/.env}:/var/www/html/.env:ro
+      # .env 파일은 blog.backend 디렉토리 내에 복호화되어 자동 포함됨
     depends_on:
       db:
         condition: service_healthy
@@ -43,7 +43,7 @@ services:
       - NEXT_PUBLIC_API_BASE=http://localhost:4000
     volumes:
       - ../blog.frontend:/usr/src/app:cached
-      - ${MY_FRONTEND_ENV_FILE:-./../blog.frontend/.env}:/usr/src/app/.env:ro
+      # .env 파일은 blog.frontend 디렉토리 내에 복호화되어 자동 포함됨
     ports:
       - "3000:3000"
     networks:
