@@ -1,162 +1,162 @@
-# 🐳 My 블러그 프로젝트 — Docker 개발 환경 가이드 (인자 기반 버전)
+# 🐳 Blog Docker Environment — Multi-Env Setup (Updated 2025-10-10)
 
-이 환경은 **Next.js(Frontend)** + **Laravel(Backend)** + **MariaDB** 로 구성된
-개인 블로그 프로젝트의 **로컬/운영 통합 Docker 개발 세트**입니다.
+이 프로젝트는 **Next.js (Frontend)** + **Laravel (Backend)** + **MariaDB (DB)** + **Nginx (Proxy)** 환경을
+Docker 기반으로 개발 및 배포하기 위한 멀티 환경 자동화 구성입니다.
 
-`.env` 파일은 **AES-256 방식으로 암호화되어 iCloud에 백업**되며,
-`make up local` 명령만으로 자동 복호화 후 실행이 가능합니다.
+---
+
+## 🚀 주요 특징
+
+- **3단계 환경 분리:** `local`, `development`, `production`
+- **환경별 .env 암호화/복호화 자동화**
+- **Makefile 기반 관리 명령어**
+- **iCloud 백업 지원**
+- **상태 확인 명령어 (`make status`)** 포함
 
 ---
 
 ## 📁 디렉토리 구조
 
 ```
-blog.backend/      # Laravel 백엔드
-blog.frontend/     # Next.js 프론트엔드
-blog.docker/       # Docker 설정 및 관리 스크립트
+blog.backend/      → Laravel Backend
+blog.frontend/     → Next.js Frontend
+blog.docker/       → Docker + Makefile + Scripts
 ```
 
 ---
 
-## 🚀 주요 기능
+## ⚙️ 주요 명령어
 
-| 기능 | 설명 |
-|------|------|
-| 🧩 Docker Compose | Laravel, Nginx, Node, MariaDB 자동 구성 |
-| 🔐 `.env` 암호화 | OpenSSL AES-256 기반 (`.env.local.enc`, `.env.production.enc`) |
-| ☁️ iCloud 백업 | 암호화된 `.env` 자동 백업 |
-| 🧪 Verify | 컨테이너 내부 `.env` 반영 상태 자동 확인 |
-| 🧰 Makefile | 모든 명령어를 `make` 한 줄로 실행 가능 |
-
----
-
-## ⚙️ 초기 세팅
-
-### 1️⃣ 환경 변수 등록 (Mac Zsh)
-
-`.zshrc` 또는 `.local.zshrc` 에 아래를 추가하세요.
-
-```bash
-export BLOG_ENV_SECRET="my-env-secret"
-```
-
-> 이 키는 `.env` 암호화/복호화 시 사용됩니다.
-> iCloud와 동기화된 모든 Mac에 동일한 키를 설정해야 합니다.
-
-적용:
-```bash
-source ~/.zshrc
-```
-
----
-
-## 🧩 Makefile 주요 명령어
-
-### 🔹 컨테이너 실행 / 종료
-
-| 명령어 | 설명 |
-|--------|------|
-| `make up local` | 로컬 개발용 실행 |
-| `make up development` | 개발 서버용 실행 |
-| `make up production` | 운영용 실행 |
-| `make down local` | 로컬 컨테이너 종료 |
-| `make down production` | 운영 컨테이너 종료 |
-
----
-
-### 🔹 `.env` 암호화 / 복호화 / 백업
+### 🔐 환경 파일 관리
 
 | 명령어 | 설명 |
 |--------|------|
 | `make env-encrypt local` | `.env` → `.env.local.enc` 암호화 |
+| `make env-encrypt development` | `.env` → `.env.development.enc` 암호화 |
 | `make env-encrypt production` | `.env` → `.env.production.enc` 암호화 |
 | `make decrypt-backend local` | 백엔드 `.env.local.enc` 복호화 |
-| `make decrypt-frontend production` | 프론트 `.env.production.enc` 복호화 |
-| `make backup-env local` | 암호화된 `.env.local.enc` iCloud 백업 |
-
-> 🔐 모든 암호화·복호화는 `BLOG_ENV_SECRET` 키를 기반으로 수행됩니다.
+| `make decrypt-frontend local` | 프론트 `.env.local.enc` 복호화 |
+| `make backup-env local` | iCloud로 암호화된 .env 파일 백업 |
 
 ---
 
-### 🔹 컨테이너 내부 접근
+### 🐳 Docker 관리
 
 | 명령어 | 설명 |
 |--------|------|
-| `make sh-php` | PHP 컨테이너 접속 (`/var/www/html`) |
-| `make sh-node` | Node 컨테이너 접속 (`/usr/src/app`) |
+| `make up local` | `.env.local.enc` 복호화 → 컨테이너 빌드/실행 |
+| `make down development` | 개발용 컨테이너 종료 및 정리 |
+| `make build` | 전체 Docker 이미지 재빌드 |
+| `make logs` | 실시간 로그 보기 |
+| `make sh-php` | PHP 컨테이너 접속 |
+| `make sh-node` | Node 컨테이너 접속 |
 
 ---
 
-### 🔹 Laravel / Yarn
+### 🧩 Laravel / Frontend 유틸리티
 
 | 명령어 | 설명 |
 |--------|------|
-| `make migrate` | Laravel DB 마이그레이션 실행 |
-| `make seed` | Seeder 실행 |
-| `make yarn` | Yarn 명령 실행 (ex. `install`, `dev` 등) |
+| `make migrate` | Laravel DB 마이그레이션 |
+| `make seed` | Laravel Seeder 실행 |
+| `make yarn` | 프론트엔드 Yarn 명령 실행 |
+| `make clean` | 모든 .env 및 Docker 볼륨 초기화 |
 
 ---
 
-### 🔹 환경 검증
+### 🔍 환경 상태 확인
 
 | 명령어 | 설명 |
 |--------|------|
-| `make verify-env` | PHP/Node 컨테이너 내 `.env` 반영 여부 확인 |
-| `make clean` | 전체 컨테이너 및 볼륨 초기화 (환경 유지) |
+| `make status` | Docker + ENV 상태를 이쁘게 출력 |
+| `make verify-env` | 컨테이너 내 `APP_ENV` / `NODE_ENV` 출력 확인 |
 
----
+#### 출력 예시
 
-## 🧠 실행 순서 예시
+```
+🌍 BLOG SYSTEM STATUS REPORT
+──────────────────────────────────────────────
+📦 Docker Containers:
+NAMES           STATUS          PORTS
+blog-nginx      Up 3 minutes    0.0.0.0:4000->80/tcp
+blog-node       Up 3 minutes    0.0.0.0:3000->3000/tcp
+blog-mariadb    Up 3 minutes    0.0.0.0:3306->3306/tcp
 
-```bash
-# 1. 로컬 개발 환경 실행
-make up local
+⚙️ Environment Summary:
+Backend .env →
+../blog.backend/.env (updated: 2025-10-10 19:26)
+Frontend .env →
+../blog.frontend/.env (updated: 2025-10-10 19:26)
 
-# 2. Laravel 마이그레이션
-make migrate
+🔑 BLOG_ENV_SECRET:
+✅ Set (Length: 44)
 
-# 3. 컨테이너 내부 .env 확인
-make verify-env
+🧩 PHP APP_ENV & Node ENV:
+APP_ENV=local
+NODE_ENV=development
 
-# 4. 종료
-make down local
-
-# 5. 수정된 .env 암호화
-make env-encrypt production
-
-# 6. iCloud 백업
-make backup-env production
+✅ Status check complete.
+──────────────────────────────────────────────
 ```
 
 ---
 
 ## ☁️ iCloud 백업 경로
 
-암호화된 `.env` 백업 파일은 자동으로 아래에 저장됩니다:
-
-```
-~/Library/Mobile Documents/com~apple~CloudDocs/blog_envs/
-```
-
-| 파일명 | 설명 |
-|--------|------|
-| `blog_backend.local.enc` | 백엔드 로컬 환경 |
-| `blog_frontend.production.enc` | 프론트 운영 환경 |
+- macOS에서 자동으로 아래 위치에 백업됩니다.
+  ```bash
+  ~/Library/Mobile Documents/com~apple~CloudDocs/blog_envs/
+  ```
 
 ---
 
-## 🧹 문제 해결
+## 💡 환경 변수 (Mac zsh 기준)
 
-| 문제 | 원인 / 해결책 |
-|------|----------------|
-| `.env` 디렉토리로 생성됨 | `.env` 디렉토리 삭제 후 `make up local` 재실행 |
-| `.env` 복호화 실패 | `BLOG_ENV_SECRET` 키값 확인 |
-| DB 연결 실패 | `.env` 내 `DB_HOST=db` 확인 |
-| 빌드 실패 | `make clean` → `make up local` 로 초기화 |
+`~/.zshrc`에 다음을 추가하세요:
+
+```bash
+export BLOG_ENV_SECRET="my-env-secret"
+```
 
 ---
 
-## 🧾 License
+## 🧠 사용 흐름 요약
 
-MIT © 2025 [psmever]
-개인 프로젝트용으로 자유롭게 수정 및 배포 가능합니다.
+```bash
+# 1️⃣ 초기 설정
+make env-encrypt local
+
+# 2️⃣ 로컬 환경 실행
+make up local
+
+# 3️⃣ 상태 확인
+make status
+
+# 4️⃣ 종료
+make down local
+```
+
+---
+
+## 🧱 기본 포트 구성
+
+| 서비스 | 포트 | 설명 |
+|---------|------|------|
+| Frontend (Next.js) | `3000` | http://localhost:3000 |
+| Backend (Laravel + Nginx) | `4000` | http://localhost:4000 |
+| Database (MariaDB) | `3306` | 내부 접속용 |
+
+---
+
+## 🧩 주의사항
+
+- `.env` 파일은 Git에 포함되지 않습니다.
+- `.env.local.enc` 등 암호화된 파일만 Git에 포함하면 됩니다.
+- macOS 기준 `stat` 명령어 포맷(`%Y-%m-%d %H:%M`)로 날짜가 표시됩니다.
+
+---
+
+## ✨ 제작자 메모
+
+> “환경을 바꾸는 힘은 자동화에서 온다.”
+> — Runcomm Dev / Blog Platform Project
