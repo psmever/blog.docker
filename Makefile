@@ -1,118 +1,37 @@
 # ===============================
-# 📦 Blog Docker Makefile
-# (local / development / production)
+# 📦 Blog Docker Makefile (local / development / production)
 # ===============================
 
 DC = docker compose -f ./docker-compose.yml
 BACKEND_DIR = ../blog.backend
 FRONTEND_DIR = ../blog.frontend
 BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
+ENV ?= local  # 기본 환경
 
-# 환경 지정 (예: make up local → ENV=local)
-ARG ?= $(word 2, $(MAKECMDGOALS))
-ENV ?= $(if $(ARG),$(ARG),local)
-
-# “phony target” 에러 방지용
-%:
-	@:
-
-.PHONY: up down build logs sh-php sh-node migrate seed yarn clean \
-        env-encrypt decrypt decrypt-local decrypt-development decrypt-production backup-env
+.PHONY: up down build logs sh-php sh-node migrate seed yarn clean verify-env \
+        env-encrypt decrypt-backend decrypt-frontend backup-env
 
 # ===============================
-# 🚀 Docker 컨테이너 관리
+# 🚀 Docker Lifecycle
 # ===============================
 
 up:
+	@if [ -z "$(filter $(ENV),local development production)" ]; then \
+		echo "❌ 사용법: make up [local|development|production]"; exit 1; \
+	fi
 	@echo "🚀 Starting containers for ENV=$(ENV)..."
-	@$(MAKE) decrypt-$(ENV)
-	@echo "✅ .env 복호화 및 교체 완료"
+	@$(MAKE) decrypt-backend ENV=$(ENV)
+	@$(MAKE) decrypt-frontend ENV=$(ENV)
+	@echo "✅ .env 복호화 완료 (backend + frontend)"
 	$(DC) up -d --build
-	@echo ""
 	@echo "✅ Containers running for $(ENV)!"
-	@echo "💡 .env files remain on disk for debugging."
 
 down:
+	@if [ -z "$(filter $(ENV),local development production)" ]; then \
+		echo "❌ 사용법: make down [local|development|production]"; exit 1; \
+	fi
 	@echo "🛑 Stopping containers for ENV=$(ENV)..."
 	$(DC) down -v
-	@echo "✅ Containers stopped."
-
-# ===============================
-# 🔐 Encrypt / Decrypt per ENV
-# ===============================
-
-# 공통 암호화
-define ENCRYPT_ENV
-	@echo "🔐 Encrypting backend .env → .env.$(1).enc ..."
-	@if [ -f $(BACKEND_DIR)/.env ]; then \
-		cd $(BACKEND_DIR) && openssl enc -aes-256-cbc -pbkdf2 -salt \
-			-in .env -out .env.$(1).enc -k "$(BLOG_ENV_SECRET)"; \
-		echo "✅ Backend .env.$(1).enc created."; \
-	else echo "⚠️  $(BACKEND_DIR)/.env not found."; fi
-
-	@echo "🔐 Encrypting frontend .env → .env.$(1).enc ..."
-	@if [ -f $(FRONTEND_DIR)/.env ]; then \
-		cd $(FRONTEND_DIR) && openssl enc -aes-256-cbc -pbkdf2 -salt \
-			-in .env -out .env.$(1).enc -k "$(BLOG_ENV_SECRET)"; \
-		echo "✅ Frontend .env.$(1).enc created."; \
-	else echo "⚠️  $(FRONTEND_DIR)/.env not found."; fi
-endef
-
-# 공통 복호화 (덮어쓰기 교체 전용)
-define DECRYPT_ENV
-	@echo "🔓 Decrypting backend .env.$(1).enc ..."
-	@if [ -f $(BACKEND_DIR)/.env.$(1).enc ]; then \
-		echo "→ using key: $(BLOG_ENV_SECRET)"; \
-		echo "→ decrypting: $(BACKEND_DIR)/.env.$(1).enc"; \
-		openssl enc -d -aes-256-cbc -pbkdf2 \
-			-in $(BACKEND_DIR)/.env.$(1).enc \
-			-out $(BACKEND_DIR)/.env.tmp -k "$(BLOG_ENV_SECRET)" || echo "❌ openssl failed"; \
-		if [ -s $(BACKEND_DIR)/.env.tmp ]; then \
-			mv -f $(BACKEND_DIR)/.env.tmp $(BACKEND_DIR)/.env; \
-			echo "✅ Backend .env.$(1).enc → .env 복호화 완료"; \
-		else \
-			echo "❌ Backend 복호화 실패 — .env.tmp 비어 있음"; \
-			rm -f $(BACKEND_DIR)/.env.tmp; \
-		fi; \
-	else \
-		echo "⚠️  $(BACKEND_DIR)/.env.$(1).enc not found."; \
-	fi; \
-	echo "🔓 Decrypting frontend .env.$(1).enc ..."; \
-	if [ -f $(FRONTEND_DIR)/.env.$(1).enc ]; then \
-		openssl enc -d -aes-256-cbc -pbkdf2 \
-			-in $(FRONTEND_DIR)/.env.$(1).enc \
-			-out $(FRONTEND_DIR)/.env.tmp -k "$(BLOG_ENV_SECRET)" || echo "❌ openssl failed"; \
-		if [ -s $(FRONTEND_DIR)/.env.tmp ]; then \
-			mv -f $(FRONTEND_DIR)/.env.tmp $(FRONTEND_DIR)/.env; \
-			echo "✅ Frontend .env.$(1).enc → .env 복호화 완료"; \
-		else \
-			echo "❌ Frontend 복호화 실패 — .env.tmp 비어 있음"; \
-			rm -f $(FRONTEND_DIR)/.env.tmp; \
-		fi; \
-	else \
-		echo "⚠️  $(FRONTEND_DIR)/.env.$(1).enc not found."; \
-	fi
-endef
-
-# 환경별 명령
-env-encrypt:
-	$(call ENCRYPT_ENV,$(ENV))
-
-decrypt:
-	$(call DECRYPT_ENV,$(ENV))
-
-decrypt-local:
-	$(call DECRYPT_ENV,local)
-
-decrypt-development:
-	$(call DECRYPT_ENV,development)
-
-decrypt-production:
-	$(call DECRYPT_ENV,production)
-
-# ===============================
-# 🧩 Utility Commands
-# ===============================
 
 build:
 	$(DC) build --no-cache
@@ -137,15 +56,72 @@ yarn:
 
 clean:
 	$(DC) down -v
-	rm -f $(BACKEND_DIR)/.env $(FRONTEND_DIR)/.env
-	@echo "🧹 .env cleanup completed."
 
 # ===============================
-# ☁️ iCloud 백업 (선택)
+# 🔐 Encrypt / Decrypt per ENV
+# ===============================
+
+decrypt-backend:
+	@echo "🔓 Decrypting backend .env.$(ENV).enc ..."
+	@if [ -f $(BACKEND_DIR)/.env.$(ENV).enc ]; then \
+		rm -f $(BACKEND_DIR)/.env; \
+		openssl enc -d -aes-256-cbc -pbkdf2 \
+			-in $(BACKEND_DIR)/.env.$(ENV).enc \
+			-out $(BACKEND_DIR)/.env \
+			-k "$(BLOG_ENV_SECRET)"; \
+		echo "✅ Backend .env.$(ENV).enc → .env 복호화 완료"; \
+	else \
+		echo "⚠️  $(BACKEND_DIR)/.env.$(ENV).enc 파일을 찾을 수 없습니다."; \
+	fi
+
+decrypt-frontend:
+	@echo "🔓 Decrypting frontend .env.$(ENV).enc ..."
+	@if [ -f $(FRONTEND_DIR)/.env.$(ENV).enc ]; then \
+		rm -f $(FRONTEND_DIR)/.env; \
+		openssl enc -d -aes-256-cbc -pbkdf2 \
+			-in $(FRONTEND_DIR)/.env.$(ENV).enc \
+			-out $(FRONTEND_DIR)/.env \
+			-k "$(BLOG_ENV_SECRET)"; \
+		echo "✅ Frontend .env.$(ENV).enc → .env 복호화 완료"; \
+	else \
+		echo "⚠️  $(FRONTEND_DIR)/.env.$(ENV).enc 파일을 찾을 수 없습니다."; \
+	fi
+
+env-encrypt:
+	@echo "🔐 Encrypting backend .env → .env.$(ENV).enc ..."
+	@if [ -f $(BACKEND_DIR)/.env ]; then \
+		cd $(BACKEND_DIR) && openssl enc -aes-256-cbc -pbkdf2 -salt \
+			-in .env -out .env.$(ENV).enc -k "$(BLOG_ENV_SECRET)"; \
+		echo "✅ Backend $(ENV) env encrypted."; \
+	else \
+		echo "⚠️  Skip: $(BACKEND_DIR)/.env not found."; \
+	fi
+	@echo "🔐 Encrypting frontend .env → .env.$(ENV).enc ..."
+	@if [ -f $(FRONTEND_DIR)/.env ]; then \
+		cd $(FRONTEND_DIR) && openssl enc -aes-256-cbc -pbkdf2 -salt \
+			-in .env -out .env.$(ENV).enc -k "$(BLOG_ENV_SECRET)"; \
+		echo "✅ Frontend $(ENV) env encrypted."; \
+	else \
+		echo "⚠️  Skip: $(FRONTEND_DIR)/.env not found."; \
+	fi
+
+# ===============================
+# ☁️ Optional: iCloud Backup
 # ===============================
 
 backup-env:
 	@mkdir -p ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs
-	cp -v $(BACKEND_DIR)/.env.*.enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/
-	cp -v $(FRONTEND_DIR)/.env.*.enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/
-	@echo "✅ Encrypted .env files backed up to iCloud!"
+	cp -v $(BACKEND_DIR)/.env.$(ENV).enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/blog_backend.$(ENV).enc || true
+	cp -v $(FRONTEND_DIR)/.env.$(ENV).enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/blog_frontend.$(ENV).enc || true
+	@echo "✅ Encrypted $(ENV) envs backed up to iCloud."
+
+# ===============================
+# 🔍 Verify .env in Containers
+# ===============================
+
+verify-env:
+	@echo "🔍 Checking backend .env inside PHP container..."
+	@$(DC) exec php sh -c "echo '--- /var/www/html/.env (first 5 lines) ---'; head -n 5 /var/www/html/.env || echo '⚠️  .env not found';"
+	@echo ""
+	@echo "🔍 Checking frontend .env inside Node container..."
+	@$(DC) exec node sh -c "echo '--- /usr/src/app/.env (first 5 lines) ---'; head -n 5 /usr/src/app/.env || echo '⚠️  .env not found';"
