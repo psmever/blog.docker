@@ -173,5 +173,5 @@ make backup-env ENV=production
 
 ## 🧾 License
 
-MIT © 2025 [Your Name]
+MIT © 2025 [psmever]
 개인 프로젝트용으로 자유롭게 수정/배포 가능합니다.
