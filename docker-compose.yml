@@ -19,7 +19,7 @@ services:
       context: ./php
     container_name: blog-php
     environment:
-      APP_ENV: local  # 개발 환경일 때만 migrate 실행됨
+      APP_ENV: ${APP_ENV:-local}  # 개발 환경일 때만 migrate 실행됨
     volumes:
       - ../blog.backend:/var/www/html:cached
       # .env 파일은 blog.backend 디렉토리 내에 복호화되어 자동 포함됨
@@ -38,7 +38,7 @@ services:
     working_dir: /usr/src/app
     command: sh -lc "yarn install && yarn dev"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=${NODE_ENV:-development}
       - PORT=3000
       - NEXT_PUBLIC_API_BASE=http://localhost:4000
     volumes:

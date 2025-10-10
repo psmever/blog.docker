@@ -23,18 +23,16 @@ up:
 	$(MAKE) --no-print-directory decrypt-backend $(ENV_TARGET); \
 	$(MAKE) --no-print-directory decrypt-frontend $(ENV_TARGET); \
 	echo "✅ .env 복호화 완료 (backend + frontend)"; \
-	$(DC) up -d --build; \
+	APP_ENV=$(ENV_TARGET) NODE_ENV=$(ENV_TARGET) $(DC) up -d --build; \
 	echo "✅ Containers running for $(ENV_TARGET)!"; \
 	exit 0
 
 down:
-	@if [ -z "$(ENV_TARGET)" ]; then \
-		echo "❌ 사용법: make down [local|development|production]"; exit 1; \
-	fi; \
-	echo "🛑 Stopping containers for ENV=$(ENV_TARGET)..."; \
-	$(DC) down -v; \
-	rm -f $(BACKEND_DIR)/.env $(FRONTEND_DIR)/.env; \
-	echo "✅ Containers stopped and cleaned."
+	@echo "🛑 Stopping all containers..."
+	$(DC) down -v
+	@echo "🧹 Cleaning temporary .env files..."
+	rm -f $(BACKEND_DIR)/.env $(FRONTEND_DIR)/.env
+	@echo "✅ All containers stopped and .env cleaned."
 
 # ===============================
 # 🧩 Common Docker Utilities
