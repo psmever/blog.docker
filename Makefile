@@ -1,18 +1,18 @@
 # ===============================
-# 📦 Blog Docker Makefile (local / development / production)
+# 🐳 Blog Docker Multi-Env Makefile (v4)
 # ===============================
 
 DC = docker compose -f ./docker-compose.yml
 BACKEND_DIR = ../blog.backend
 FRONTEND_DIR = ../blog.frontend
 BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
-ENV_TARGET := $(word 2,$(MAKECMDGOALS))
+ENV_TARGET ?= $(word 2,$(MAKECMDGOALS))
 
-.PHONY: up down build logs sh-php sh-node migrate seed yarn clean \
-        env-encrypt decrypt-backend decrypt-frontend backup-env verify-env status
+.PHONY: up down logs build sh-php sh-node migrate seed yarn clean \
+        env-encrypt decrypt-backend decrypt-frontend verify-env status backup-env
 
 # ===============================
-# 🚀 UP / DOWN
+# 🚀 Docker up/down
 # ===============================
 
 up:
@@ -20,8 +20,8 @@ up:
 		echo "❌ 사용법: make up [local|development|production]"; exit 1; \
 	fi; \
 	echo "🚀 Starting containers for ENV=$(ENV_TARGET)..."; \
-	$(MAKE) --no-print-directory decrypt-backend ENV=$(ENV_TARGET); \
-	$(MAKE) --no-print-directory decrypt-frontend ENV=$(ENV_TARGET); \
+	$(MAKE) --no-print-directory decrypt-backend $(ENV_TARGET); \
+	$(MAKE) --no-print-directory decrypt-frontend $(ENV_TARGET); \
 	echo "✅ .env 복호화 완료 (backend + frontend)"; \
 	$(DC) up -d --build; \
 	echo "✅ Containers running for $(ENV_TARGET)!"; \
@@ -33,18 +33,18 @@ down:
 	fi; \
 	echo "🛑 Stopping containers for ENV=$(ENV_TARGET)..."; \
 	$(DC) down -v; \
-	echo "✅ Containers stopped for $(ENV_TARGET)."; \
-	exit 0
+	rm -f $(BACKEND_DIR)/.env $(FRONTEND_DIR)/.env; \
+	echo "✅ Containers stopped and cleaned."
 
 # ===============================
-# 🧩 BUILD / LOGS / ACCESS
+# 🧩 Common Docker Utilities
 # ===============================
-
-build:
-	$(DC) build --no-cache
 
 logs:
 	$(DC) logs -f --tail=200
+
+build:
+	$(DC) build --no-cache
 
 sh-php:
 	$(DC) exec php bash
@@ -64,9 +64,10 @@ yarn:
 clean:
 	$(DC) down -v
 	rm -f $(BACKEND_DIR)/.env $(FRONTEND_DIR)/.env
+	echo "🧹 Cleaned Docker and .env files."
 
 # ===============================
-# 🔐 ENCRYPT / DECRYPT
+# 🔐 Encrypt / Decrypt per environment
 # ===============================
 
 env-encrypt:
@@ -79,7 +80,7 @@ env-encrypt:
 			-in .env -out .env.$(ENV_TARGET).enc -k "$(BLOG_ENV_SECRET)"; \
 		echo "✅ Backend .env.$(ENV_TARGET).enc 생성 완료."; \
 	else \
-		echo "⚠️  $(BACKEND_DIR)/.env 파일 없음 — skip"; \
+		echo "⚠️  $(BACKEND_DIR)/.env 파일이 없습니다. 건너뜀."; \
 	fi; \
 	echo "🔐 Encrypting frontend .env → .env.$(ENV_TARGET).enc..."; \
 	if [ -f $(FRONTEND_DIR)/.env ]; then \
@@ -87,9 +88,8 @@ env-encrypt:
 			-in .env -out .env.$(ENV_TARGET).enc -k "$(BLOG_ENV_SECRET)"; \
 		echo "✅ Frontend .env.$(ENV_TARGET).enc 생성 완료."; \
 	else \
-		echo "⚠️  $(FRONTEND_DIR)/.env 파일 없음 — skip"; \
-	fi; \
-	exit 0
+		echo "⚠️  $(FRONTEND_DIR)/.env 파일이 없습니다. 건너뜀."; \
+	fi
 
 decrypt-backend:
 	@if [ -z "$(ENV_TARGET)" ]; then \
@@ -97,15 +97,14 @@ decrypt-backend:
 	fi; \
 	echo "🔓 Decrypting backend .env.$(ENV_TARGET).enc ..."; \
 	if [ -f $(BACKEND_DIR)/.env.$(ENV_TARGET).enc ]; then \
-		rm -rf $(BACKEND_DIR)/.env; \
 		openssl enc -d -aes-256-cbc -pbkdf2 \
 			-in $(BACKEND_DIR)/.env.$(ENV_TARGET).enc \
-			-out $(BACKEND_DIR)/.env -k "$(BLOG_ENV_SECRET)"; \
+			-out $(BACKEND_DIR)/.env \
+			-k "$(BLOG_ENV_SECRET)"; \
 		echo "✅ Backend .env.$(ENV_TARGET).enc → .env 복호화 완료"; \
 	else \
-		echo "⚠️  $(BACKEND_DIR)/.env.$(ENV_TARGET).enc 없음"; \
-	fi; \
-	exit 0
+		echo "⚠️  $(BACKEND_DIR)/.env.$(ENV_TARGET).enc 파일이 없습니다."; \
+	fi
 
 decrypt-frontend:
 	@if [ -z "$(ENV_TARGET)" ]; then \
@@ -113,39 +112,32 @@ decrypt-frontend:
 	fi; \
 	echo "🔓 Decrypting frontend .env.$(ENV_TARGET).enc ..."; \
 	if [ -f $(FRONTEND_DIR)/.env.$(ENV_TARGET).enc ]; then \
-		rm -rf $(FRONTEND_DIR)/.env; \
 		openssl enc -d -aes-256-cbc -pbkdf2 \
 			-in $(FRONTEND_DIR)/.env.$(ENV_TARGET).enc \
-			-out $(FRONTEND_DIR)/.env -k "$(BLOG_ENV_SECRET)"; \
+			-out $(FRONTEND_DIR)/.env \
+			-k "$(BLOG_ENV_SECRET)"; \
 		echo "✅ Frontend .env.$(ENV_TARGET).enc → .env 복호화 완료"; \
 	else \
-		echo "⚠️  $(FRONTEND_DIR)/.env.$(ENV_TARGET).enc 없음"; \
-	fi; \
-	exit 0
-
-# ===============================
-# ☁️ BACKUP / VERIFY / STATUS
-# ===============================
+		echo "⚠️  $(FRONTEND_DIR)/.env.$(ENV_TARGET).enc 파일이 없습니다."; \
+	fi
 
 backup-env:
-	@if [ -z "$(ENV_TARGET)" ]; then \
-		echo "❌ 사용법: make backup-env [local|development|production]"; exit 1; \
-	fi; \
-	mkdir -p ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs; \
-	cp -v $(BACKEND_DIR)/.env.$(ENV_TARGET).enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/blog_backend.$(ENV_TARGET).enc || true; \
-	cp -v $(FRONTEND_DIR)/.env.$(ENV_TARGET).enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/blog_frontend.$(ENV_TARGET).enc || true; \
-	echo "✅ $(ENV_TARGET) 환경 .env 암호화 파일 iCloud 백업 완료."; \
-	exit 0
+	@mkdir -p ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs
+	cp -v $(BACKEND_DIR)/.env.*.enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/ 2>/dev/null || true
+	cp -v $(FRONTEND_DIR)/.env.*.enc ~/Library/Mobile\ Documents/com~apple~CloudDocs/blog_envs/ 2>/dev/null || true
+	echo "✅ Encrypted .env.*.enc 파일이 iCloud로 백업되었습니다."
+
+# ===============================
+# 🧠 Verification & Status Check
+# ===============================
 
 verify-env:
-	@echo "🔍 Verifying environment in containers..."
-	$(DC) exec php printenv | grep APP_ENV || true
-	$(DC) exec node printenv | grep NODE_ENV || true
-	@echo "✅ .env 반영 상태 확인 완료."
-
-# ===============================
-# 🧭 STATUS COMMAND
-# ===============================
+	@echo "\n🧠 Verifying Environment Variables..."
+	@echo "Backend:"
+	-@$(DC) exec php printenv | grep APP_ENV || echo "⚠️ PHP 컨테이너가 실행 중이 아닙니다."
+	@echo "\nFrontend:"
+	-@$(DC) exec node printenv | grep NODE_ENV || echo "⚠️ Node 컨테이너가 실행 중이 아닙니다."
+	@echo "✅ Environment 확인 완료."
 
 status:
 	@echo "\n🌍 BLOG SYSTEM STATUS REPORT"
@@ -166,7 +158,7 @@ status:
 	@echo "──────────────────────────────────────────────"
 
 # ===============================
-# 🧩 Dummy Rule (에러 방지)
+# 🧩 Ignore Unused Args (Fix warnings)
 # ===============================
 %:
 	@:
