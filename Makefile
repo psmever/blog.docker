@@ -9,7 +9,7 @@ BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
 ENV_TARGET := $(word 2,$(MAKECMDGOALS))
 
 .PHONY: up down build logs sh-php sh-node migrate seed yarn clean \
-        env-encrypt decrypt-backend decrypt-frontend backup-env verify-env
+        env-encrypt decrypt-backend decrypt-frontend backup-env verify-env status
 
 # ===============================
 # 🚀 UP / DOWN
@@ -124,7 +124,7 @@ decrypt-frontend:
 	exit 0
 
 # ===============================
-# ☁️ BACKUP / VERIFY
+# ☁️ BACKUP / VERIFY / STATUS
 # ===============================
 
 backup-env:
@@ -142,6 +142,28 @@ verify-env:
 	$(DC) exec php printenv | grep APP_ENV || true
 	$(DC) exec node printenv | grep NODE_ENV || true
 	@echo "✅ .env 반영 상태 확인 완료."
+
+# ===============================
+# 🧭 STATUS COMMAND
+# ===============================
+
+status:
+	@echo "\n🌍 BLOG SYSTEM STATUS REPORT"
+	@echo "──────────────────────────────────────────────"
+	@echo "📦 Docker Containers:"
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+	@echo "\n⚙️ Environment Summary:"
+	@echo "Backend .env →"
+	@[ -f $(BACKEND_DIR)/.env ] && stat -f "%N (updated: %SB)" -t "%Y-%m-%d %H:%M" $(BACKEND_DIR)/.env || echo "❌ Not Found"
+	@echo "Frontend .env →"
+	@[ -f $(FRONTEND_DIR)/.env ] && stat -f "%N (updated: %SB)" -t "%Y-%m-%d %H:%M" $(FRONTEND_DIR)/.env || echo "❌ Not Found"
+	@echo "\n🔑 BLOG_ENV_SECRET:"
+	@if [ -z "$(BLOG_ENV_SECRET)" ]; then echo "⚠️ Not Set"; else echo "✅ Set (Length: $$(echo -n $(BLOG_ENV_SECRET) | wc -c))"; fi
+	@echo "\n🧩 PHP APP_ENV & Node ENV:"
+	-@$(DC) exec php printenv | grep APP_ENV || echo "⚠️ PHP not running"
+	-@$(DC) exec node printenv | grep NODE_ENV || echo "⚠️ Node not running"
+	@echo "\n✅ Status check complete."
+	@echo "──────────────────────────────────────────────"
 
 # ===============================
 # 🧩 Dummy Rule (에러 방지)
