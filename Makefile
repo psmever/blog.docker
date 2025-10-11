@@ -41,6 +41,27 @@ down:
 logs:
 	$(DC) logs -f --tail=200
 
+# ===============================
+# 📜 Laravel Log Commands
+# ===============================
+
+laravel-log:
+	@echo "🧾 Viewing Laravel logs from container (blog-php)..."
+	@tail_count=$(or $(tail),50); \
+	follow_flag=$(if $(filter true,$(follow)),-f,); \
+	docker compose -f ./docker-compose.yml exec php sh -c "cd /var/www/html && tail $$follow_flag -n $$tail_count storage/logs/laravel.log"
+
+laravel-log-clear:
+	@echo "🧹 Clearing Laravel log file..."
+	@docker compose -f ./docker-compose.yml exec php sh -c "echo '' > /var/www/html/storage/logs/laravel.log"
+	@echo "✅ Laravel log file cleared."
+
+laravel-log-error:
+	@echo "❗ Showing only ERROR lines from Laravel log..."
+	@docker compose -f ./docker-compose.yml exec php sh -c "grep -i 'ERROR' /var/www/html/storage/logs/laravel.log || echo 'No errors found ✅'"
+# ===============================
+
+# 🛠 Build & Shell Access
 build:
 	$(DC) build --no-cache
 
