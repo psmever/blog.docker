@@ -3,11 +3,14 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: blog-nginx
+    environment:
+      TZ: Asia/Seoul
     ports:
       - "4000:80"  # → http://localhost:4000
     depends_on:
       - php
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ../blog.backend:/var/www/html:cached
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
@@ -20,7 +23,9 @@ services:
     container_name: blog-php
     environment:
       APP_ENV: ${APP_ENV:-local}  # 개발 환경일 때만 migrate 실행됨
+      TZ: Asia/Seoul
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ../blog.backend:/var/www/html:cached
       # .env 파일은 blog.backend 디렉토리 내에 복호화되어 자동 포함됨
     depends_on:
@@ -38,10 +43,12 @@ services:
     working_dir: /usr/src/app
     command: sh -lc "yarn install && yarn dev"
     environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - PORT=3000
-      - NEXT_PUBLIC_API_BASE=http://localhost:4000
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: "3000"
+      NEXT_PUBLIC_API_BASE: "http://localhost:4000"
+      TZ: Asia/Seoul
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - ../blog.frontend:/usr/src/app:cached
       # .env 파일은 blog.frontend 디렉토리 내에 복호화되어 자동 포함됨
     ports:
@@ -58,8 +65,10 @@ services:
       MARIADB_USER: blog
       MARIADB_PASSWORD: blogpass
       MARIADB_ROOT_PASSWORD: rootpass
+      TZ: Asia/Seoul
     volumes:
       - dbdata:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "3306:3306"
     networks:

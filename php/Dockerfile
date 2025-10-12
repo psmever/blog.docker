@@ -4,6 +4,11 @@ FROM php:8.3-fpm-alpine
 RUN apk add --no-cache \
     git zip unzip bash icu-dev libzip-dev oniguruma-dev curl-dev libpng-dev \
     mariadb-connector-c-dev autoconf g++ make mariadb-client
+RUN apk add --no-cache tzdata
+
+ENV TZ=Asia/Seoul
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+ && echo $TZ > /etc/timezone
 
 # PHP 확장 설치
 RUN docker-php-ext-install pdo pdo_mysql mbstring intl zip gd
