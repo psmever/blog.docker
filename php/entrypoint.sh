@@ -1,36 +1,22 @@
 #!/usr/bin/env sh
 set -e
 
-echo "🚀 Laravel Entrypoint Starting..."
+echo "🚀 Laravel Octane Entrypoint Starting..."
 
-# DB 연결 대기
-until php -r "exit(fsockopen(getenv('DB_HOST') ?: 'db', getenv('DB_PORT') ?: 3306) ? 0 : 1);"; do
-  echo "⏳ waiting for database..."
-  sleep 2
-done
-
-# composer install (최초만)
-if [ ! -d "vendor" ]; then
-  echo "📦 Installing composer dependencies..."
-  composer install --no-interaction --prefer-dist
+if [ -f .env ]; then
+  echo "✅ .env 파일이 감지되었습니다."
 else
-  echo "✅ Composer dependencies already installed."
+  echo "⚠️  .env 파일이 없습니다. 기본값으로 시작합니다."
 fi
 
-# 개발환경에서 자동 migrate
-if [ "$APP_ENV" = "local" ]; then
-  echo "🚀 Running migrations in local env..."
-  php artisan migrate --force || true
-fi
+# 캐시 초기화
+php artisan optimize:clear || true
+php artisan config:cache || true
+php artisan route:cache || true
+php artisan view:cache || true
 
-# ⚙️ artisan 명령 모드 감지
-if [ "$1" = "php" ] && [ "$2" = "artisan" ]; then
-  echo "🧩 Detected artisan command → skip php-fpm"
-  shift 2
-  php artisan "$@"
-  exit 0
-fi
+# 마이그레이션 (선택)
+php artisan migrate --force || true
 
-# ✅ 웹 서버 모드일 경우에만 PHP-FPM 실행
-echo "✅ Starting PHP-FPM..."
-exec php-fpm
+echo "⚡ Starting Laravel Octane (Swoole)..."
+exec php artisan octane:start --server=swoole --host=0.0.0.0 --port=8000

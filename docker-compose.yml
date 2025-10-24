@@ -6,7 +6,7 @@ services:
     environment:
       TZ: Asia/Seoul
     ports:
-      - "4000:80"  # → http://localhost:4000
+      - "4000:80" # → http://localhost:4000
     depends_on:
       - php
     volumes:
@@ -17,17 +17,34 @@ services:
       - blognet
 
   # === PHP-FPM (Laravel) ===
+  # php:
+  #   build:
+  #     context: ./php
+  #   container_name: blog-php
+  #   environment:
+  #     APP_ENV: ${APP_ENV:-local} # 개발 환경일 때만 migrate 실행됨
+  #     TZ: Asia/Seoul
+  #   volumes:
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - ../blog.backend:/var/www/html:cached
+  #     # .env 파일은 blog.backend 디렉토리 내에 복호화되어 자동 포함됨
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   networks:
+  #     - blognet
+
   php:
     build:
       context: ./php
     container_name: blog-php
     environment:
-      APP_ENV: ${APP_ENV:-local}  # 개발 환경일 때만 migrate 실행됨
-      TZ: Asia/Seoul
+      APP_ENV: local
+    ports:
+      - "8000:8000" # Octane 서버 직접 접근 가능
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ../blog.backend:/var/www/html:cached
-      # .env 파일은 blog.backend 디렉토리 내에 복호화되어 자동 포함됨
     depends_on:
       db:
         condition: service_healthy
@@ -74,7 +91,11 @@ services:
     networks:
       - blognet
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$${MARIADB_ROOT_PASSWORD}\" --silent"]
+      test:
+        [
+          "CMD-SHELL",
+          'mariadb-admin ping -h 127.0.0.1 -uroot -p"$${MARIADB_ROOT_PASSWORD}" --silent',
+        ]
       interval: 5s
       timeout: 3s
       retries: 12

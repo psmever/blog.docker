@@ -1,5 +1,5 @@
 # ===============================
-# 🐳 Blog Docker Multi-Env Makefile (v4)
+# 🐳 Blog Docker Multi-Env Makefile (v5 - Stable)
 # ===============================
 
 DC = docker compose -f ./docker-compose.yml
@@ -9,7 +9,9 @@ BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
 ENV_TARGET ?= $(word 2,$(MAKECMDGOALS))
 
 .PHONY: up down logs build sh-php sh-node migrate seed yarn clean \
-        env-encrypt decrypt-backend decrypt-frontend verify-env status backup-env
+        env-encrypt decrypt-backend decrypt-frontend verify-env status backup-env \
+        laravel-log laravel-log-clear laravel-log-error \
+        octane-start octane-reload octane-stop
 
 # ===============================
 # 🚀 Docker up/down
@@ -41,15 +43,18 @@ down:
 logs:
 	$(DC) logs -f --tail=200
 
+build:
+	@echo "🔧 Building Docker images..."
+	$(DC) build --no-cache
+	@echo "✅ Build complete."
+
 # ===============================
-# 📜 Laravel Log Commands
+# 🧾 Laravel Logs
 # ===============================
 
 laravel-log:
-	@echo "🧾 Viewing Laravel logs from container (blog-php)..."
-	@tail_count=$(or $(tail),50); \
-	follow_flag=$(if $(filter true,$(follow)),-f,); \
-	docker compose -f ./docker-compose.yml exec php sh -c "cd /var/www/html && tail $$follow_flag -n $$tail_count storage/logs/laravel.log"
+	@echo "🧾 Viewing Laravel logs (storage/logs/laravel.log)..."
+	@docker compose -f ./docker-compose.yml exec php sh -c "tail -n 50 /var/www/html/storage/logs/laravel.log || echo 'No log file found ✅'"
 
 laravel-log-clear:
 	@echo "🧹 Clearing Laravel log file..."
@@ -59,17 +64,24 @@ laravel-log-clear:
 laravel-log-error:
 	@echo "❗ Showing only ERROR lines from Laravel log..."
 	@docker compose -f ./docker-compose.yml exec php sh -c "grep -i 'ERROR' /var/www/html/storage/logs/laravel.log || echo 'No errors found ✅'"
+
+# ===============================
+# 🧠 Shell Access
 # ===============================
 
-# 🛠 Build & Shell Access
-build:
-	$(DC) build --no-cache
-
 sh-php:
-	$(DC) exec php bash
+	@if [ -z "$$(docker compose -f ./docker-compose.yml ps -q php)" ] || [ "$$(docker inspect -f '{{.State.Running}}' blog-php 2>/dev/null)" != "true" ]; then \
+		echo "⚙️ PHP container not running — starting..."; \
+		$(DC) up -d php; \
+	fi
+	$(DC) exec php sh
 
 sh-node:
 	$(DC) exec node sh
+
+# ===============================
+# 🧩 Laravel Commands
+# ===============================
 
 migrate:
 	./scripts/artisan.sh migrate
@@ -79,6 +91,10 @@ seed:
 
 yarn:
 	./scripts/yarn.sh
+
+# ===============================
+# 🧹 Cleanup
+# ===============================
 
 clean:
 	$(DC) down -v
@@ -147,7 +163,7 @@ backup-env:
 	echo "✅ Encrypted .env.*.enc 파일이 iCloud로 백업되었습니다."
 
 # ===============================
-# 🧠 Verification & Status Check
+# 🧠 Verification & Status
 # ===============================
 
 verify-env:
@@ -175,6 +191,24 @@ status:
 	-@$(DC) exec node printenv | grep NODE_ENV || echo "⚠️ Node not running"
 	@echo "\n✅ Status check complete."
 	@echo "──────────────────────────────────────────────"
+
+# ===============================
+# ⚡ Laravel Octane Commands
+# ===============================
+
+octane-up:
+	@echo "⚡ Starting Laravel Octane..."
+	$(DC) up -d php
+	@echo "✅ Octane is now running at http://localhost:8000"
+
+octane-log:
+	$(DC) logs -f php | grep -E "Octane|Swoole|Laravel"
+
+octane-reload:
+	$(DC) exec php php artisan octane:reload
+
+octane-stop:
+	$(DC) exec php pkill -f "octane" || true
 
 # ===============================
 # 🧩 Ignore Unused Args (Fix warnings)
