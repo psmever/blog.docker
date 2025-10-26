@@ -3,20 +3,25 @@ set -e
 
 echo "🚀 Laravel Octane Entrypoint Starting..."
 
-if [ -f .env ]; then
-  echo "✅ .env 파일이 감지되었습니다."
+# --- 환경파일 검사 ---
+if [ ! -f /var/www/html/.env ]; then
+    echo "❌ .env 파일이 존재하지 않습니다!"
+    exit 1
 else
-  echo "⚠️  .env 파일이 없습니다. 기본값으로 시작합니다."
+    echo "✅ .env 파일 감지됨"
 fi
 
-# 캐시 초기화
+# --- 최적화 캐시 초기화 ---
 php artisan optimize:clear || true
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
 
-# 마이그레이션 (선택)
+# --- DB 마이그레이션 (비강제 실패 무시) ---
+echo "🧩 Running migrations..."
 php artisan migrate --force || true
 
-echo "⚡ Starting Laravel Octane (Swoole)..."
-exec php artisan octane:start --server=swoole --host=0.0.0.0 --port=8000
+# --- Octane 실행 (백그라운드) ---
+echo "⚡ Starting Laravel Octane (Swoole) on port 4000..."
+nohup php artisan octane:start --server=swoole --host=0.0.0.0 --port=4000 > /var/log/octane.log 2>&1 &
+
+# --- 컨테이너 유지 ---
+echo "🕐 Laravel Octane is running in background. Attaching log..."
+tail -f /var/log/octane.log
