@@ -6,6 +6,7 @@ DC = docker compose
 BACKEND_DIR = ../blog.backend
 FRONTEND_DIR = ../blog.frontend
 BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
+.DEFAULT_GOAL := help
 
 .PHONY: up-local up-production down-local down-production \
         build clean reset-docker \
@@ -14,7 +15,48 @@ BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
         env-encrypt-local env-encrypt-production \
         decrypt-backend-local decrypt-backend-production \
         decrypt-frontend-local decrypt-frontend-production \
-        status verify-env backup-env
+        status verify-env backup-env help
+
+help:
+	@echo "📚 Blog Docker 환경 명령어 안내"
+	@echo "──────────────────────────────────────────────"
+	@echo "🎬 실행 및 종료:"
+	@echo "  make up-local           → 로컬 컨테이너 실행 (Octane :4000)"
+	@echo "  make up-production      → 프로덕션 컨테이너 실행"
+	@echo "  make down-local         → 로컬 컨테이너 중지 및 정리"
+	@echo "  make down-production    → 프로덕션 컨테이너 중지 및 정리"
+	@echo ""
+	@echo "🧹 빌드 및 정리:"
+	@echo "  make build              → 로컬·프로덕션 이미지 재빌드"
+	@echo "  make clean              → 모든 컨테이너/볼륨 정리"
+	@echo "  make reset-docker       → 관련 이미지·볼륨·네트워크 초기화"
+	@echo ""
+	@echo "🧩 개발 유틸리티:"
+	@echo "  make migrate            → Laravel 마이그레이션 실행"
+	@echo "  make seed               → DB 시드 실행"
+	@echo "  make yarn               → Next.js 패키지 설치"
+	@echo "  make sh-laravel         → Laravel 컨테이너 쉘 접속"
+	@echo "  make sh-nextjs          → Next.js 컨테이너 쉘 접속"
+	@echo ""
+	@echo "📜 로그:"
+	@echo "  make laravel-log        → Octane 로그 tail"
+	@echo "  make laravel-log-clear  → Octane 로그 초기화"
+	@echo "  make laravel-log-error  → Octane 로그에서 ERROR 검색"
+	@echo ""
+	@echo "🔐 ENV 암·복호화:"
+	@echo "  make env-encrypt-local        → 로컬 .env 암호화"
+	@echo "  make env-encrypt-production   → 프로덕션 .env 암호화"
+	@echo "  make decrypt-backend-local    → 백엔드 로컬 .env 복호화"
+	@echo "  make decrypt-backend-production → 백엔드 프로덕션 .env 복호화"
+	@echo "  make decrypt-frontend-local   → 프런트 로컬 .env 복호화"
+	@echo "  make decrypt-frontend-production → 프런트 프로덕션 .env 복호화"
+	@echo ""
+	@echo "🧠 상태 및 백업:"
+	@echo "  make verify-env         → 컨테이너 환경변수 확인"
+	@echo "  make status             → 도커 상태 리포트"
+	@echo "  make backup-env         → 암호화된 env 파일 iCloud 백업"
+	@echo ""
+	@echo "👉 원하는 명령어를 make 뒤에 입력하세요. (예: make up-local)"
 
 # ===============================
 # 🚀 UP / DOWN
