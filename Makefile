@@ -2,7 +2,9 @@
 # 🐳 Blog Docker Multi-Env Makefile (v7: Octane BG + Attach)
 # ===============================
 
-DC = docker compose
+# Colima / macOS 호환 Compose Wrapper
+# (v2가 없으면 v1 명령으로 fallback)
+DC = $(shell if docker compose version >/dev/null 2>&1; then echo "docker compose"; else echo "docker-compose"; fi)
 BACKEND_DIR = ../blog.backend
 FRONTEND_DIR = ../blog.frontend
 BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
@@ -11,7 +13,7 @@ BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
 .PHONY: up-local up-production down-local down-production \
         build clean reset-docker \
         sh-laravel sh-nextjs migrate seed yarn \
-        laravel-log laravel-log-clear laravel-log-error \
+        logs laravel-log laravel-log-clear laravel-log-error \
         env-encrypt-local env-encrypt-production \
         decrypt-backend-local decrypt-backend-production \
         decrypt-frontend-local decrypt-frontend-production \
@@ -39,6 +41,7 @@ help:
 	@echo "  make sh-nextjs          → Next.js 컨테이너 쉘 접속"
 	@echo ""
 	@echo "📜 로그:"
+	@echo "  make logs             → 로컬 docker-compose 로그 tail (기본: laravel 제외, SERVICE=이름 으로 단일 서비스 지정 가능)"
 	@echo "  make laravel-log        → Octane 로그 tail"
 	@echo "  make laravel-log-clear  → Octane 로그 초기화"
 	@echo "  make laravel-log-error  → Octane 로그에서 ERROR 검색"
@@ -140,6 +143,21 @@ sh-nextjs:
 # ===============================
 # 📜 Laravel Log Commands
 # ===============================
+
+logs:
+	@if [ -n "$$SERVICE" ]; then \
+		echo "🧾 Viewing docker compose logs for service: $$SERVICE..."; \
+		$(DC) -f ./docker-compose.local.yml logs -f --tail=100 $$SERVICE; \
+	else \
+		excluded_service=laravel; \
+		echo "🧾 Viewing docker compose logs for all local services (excluding $$excluded_service)..."; \
+		services=$$(docker compose -f ./docker-compose.local.yml config --services | grep -v "^$$excluded_service$$"); \
+		if [ -z "$$services" ]; then \
+			echo "⚠️ No services to tail after applying exclusion."; \
+		else \
+			$(DC) -f ./docker-compose.local.yml logs -f --tail=100 $$services; \
+		fi; \
+	fi
 
 laravel-log:
 	@echo "🧾 Viewing Laravel Octane log..."

@@ -125,9 +125,31 @@ Frontend .env → ../blog.frontend/.env (updated: 2025-10-10)
 ## 🧰 개발 환경 요구사항
 
 - macOS (zsh 환경)
-- Docker Desktop
+- Colima + Docker CLI (`brew install colima docker docker-compose`)
 - Make (macOS 기본 내장)
 - OpenSSL (`brew install openssl`)
+
+---
+
+## 🐧 Colima 기반 Docker 런타임
+
+며칠 전부터 Docker Desktop 대신 [Colima](https://github.com/abiosoft/colima)를 사용하도록 환경을 전환했습니다. `docker compose` 명령 자체는 그대로지만, Colima가 백그라운드에서 Docker 데몬을 제공하므로 make 명령을 실행하기 전에 Colima가 켜져 있어야 합니다.
+
+### 설치
+
+```bash
+brew install colima docker docker-compose
+```
+
+### 실행 / 상태 / 종료
+
+```bash
+colima start --cpu 4 --memory 8 --disk 60   # 자원 값은 필요에 맞게 조정
+colima status
+colima stop
+```
+
+필요 시 `colima nerdctl` 등을 활용해 개별 VM 자원을 재조정할 수 있으며, Colima가 실행 중일 때만 `make up ...` 명령이 정상 동작합니다.
 
 ---
 
@@ -135,9 +157,10 @@ Frontend .env → ../blog.frontend/.env (updated: 2025-10-10)
 
 1. `.env.local.enc`, `.env.development.enc`, `.env.production.enc` 준비
 2. `~/.zshrc` 에 `BLOG_ENV_SECRET` 추가 후 `source ~/.zshrc`
-3. `cd blog.docker`
-4. `make up local`
-5. 브라우저에서 `http://localhost:3000` (frontend), `http://localhost:4000` (backend) 확인
+3. `colima start` 로 Docker 런타임 실행 (최초 실행 후 계속 켜두면 됨)
+4. `cd blog.docker`
+5. `make up local`
+6. 브라우저에서 `http://localhost:3000` (frontend), `http://localhost:4000` (backend) 확인
 
 ---
 
