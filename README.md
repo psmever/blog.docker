@@ -32,6 +32,11 @@ blog/
 
 | 명령어 | 설명 |
 |--------|------|
+| `make colima` | Colima 런타임 자동 실행(이미 켜져 있으면 상태만 표시) |
+| `make colima-start` | `~/.colima/default/config.yaml` 기반으로 Colima 실행 |
+| `make colima-start-custom` | 환경변수로 지정한 리소스로 Colima 수동 실행 |
+| `make colima-status` | Colima 현재 상태 출력 |
+| `make colima-stop` | Colima 종료 |
 | `make up local` | local 환경으로 컨테이너 실행 |
 | `make up development` | development 환경 실행 |
 | `make up production` | production 환경 실행 |
@@ -150,6 +155,22 @@ colima stop
 ```
 
 필요 시 `colima nerdctl` 등을 활용해 개별 VM 자원을 재조정할 수 있으며, Colima가 실행 중일 때만 `make up ...` 명령이 정상 동작합니다.
+
+### Makefile 헬퍼
+
+Colima 제어용 Make 타겟을 제공하여 반복 작업을 줄일 수 있습니다.
+
+- `make colima` : Colima가 꺼져 있으면 config 기반 `colima start` 실행 후 상태 표시, 켜져 있으면 상태만 표시
+- `make colima-start` : `~/.colima/default/config.yaml` 설정대로 Colima 실행
+- `make colima-start-custom` : `COLIMA_CPU`/`COLIMA_MEMORY`/`COLIMA_DISK` 값으로 리소스를 지정해 Colima 실행
+- `make colima-status` : 현재 상태만 빠르게 확인
+- `make colima-stop` : Colima 종료
+
+커스텀 시작(target `colima-start-custom`)은 환경변수를 통해 리소스를 조절합니다. 기본값은 4·8·60이지만 필요 시 다음처럼 조정할 수 있습니다.
+
+```bash
+COLIMA_CPU=6 COLIMA_MEMORY=16 COLIMA_DISK=80 make colima-start-custom
+```
 
 ---
 

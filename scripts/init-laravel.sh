@@ -3,8 +3,17 @@ set -euo pipefail
 
 PROJ_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
+if docker compose version >/dev/null 2>&1; then
+  DC_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  DC_CMD=(docker-compose)
+else
+  echo "❌ docker compose / docker-compose 명령을 찾을 수 없습니다." >&2
+  exit 1
+fi
+
 # 컨테이너 내부에서 /tmp 에 라라벨 생성 → /var/www/html 로 복사 ('.git*' 보존)
-docker compose -f "$PROJ_ROOT/docker-compose.yml" run --rm php bash -lc '
+"${DC_CMD[@]}" -f "$PROJ_ROOT/docker-compose.yml" run --rm php bash -lc '
   set -euo pipefail
 
   APP_DIR="/var/www/html"

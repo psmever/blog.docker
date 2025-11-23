@@ -1,6 +1,12 @@
 #!/usr/bin/env sh
 set -e
 
+if [ "$#" -ge 2 ] && [ "$1" = "php" ] && [ "$2" = "artisan" ]; then
+    shift 2
+    echo "🎯 Running artisan command (one-off): php artisan $*"
+    exec php artisan "$@"
+fi
+
 echo "🚀 Laravel Octane Entrypoint Starting..."
 
 # --- 환경파일 검사 ---
@@ -20,6 +26,8 @@ php artisan migrate --force || true
 
 # --- Octane 실행 (백그라운드) ---
 echo "⚡ Starting Laravel Octane (Swoole) on port 4000..."
+mkdir -p /var/log
+touch /var/log/octane.log
 nohup php artisan octane:start --server=swoole --host=0.0.0.0 --port=4000 > /var/log/octane.log 2>&1 &
 
 # --- 컨테이너 유지 ---

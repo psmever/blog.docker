@@ -8,25 +8,47 @@ DC = $(shell if docker compose version >/dev/null 2>&1; then echo "docker compos
 BACKEND_DIR = ../blog.backend
 FRONTEND_DIR = ../blog.frontend
 BLOG_ENV_SECRET ?= $(shell echo $$BLOG_ENV_SECRET)
+COLIMA_CPU ?= 4
+COLIMA_MEMORY ?= 8
+COLIMA_DISK ?= 60
 .DEFAULT_GOAL := help
 
-.PHONY: up-local up-production down-local down-production \
+.PHONY: colima colima-start colima-start-custom colima-status colima-stop \
+        up-local up-production down-local down-production \
         build clean reset-docker \
         sh-laravel sh-nextjs migrate seed yarn \
         logs laravel-log laravel-log-clear laravel-log-error \
         env-encrypt-local env-encrypt-production \
         decrypt-backend-local decrypt-backend-production \
         decrypt-frontend-local decrypt-frontend-production \
+        restart-laravel-local restart-nextjs-local restart-mariadb-local \
+        restart-nginx-production restart-laravel-production restart-nextjs-production restart-mariadb-production \
         status verify-env backup-env help
 
 help:
 	@echo "📚 Blog Docker 환경 명령어 안내"
 	@echo "──────────────────────────────────────────────"
+	@echo "🧊 Colima Runtime:"
+	@echo "  make colima             → Colima 자동 실행 (켜져있으면 상태만 표시)"
+	@echo "  make colima-start       → config.yaml 기반 Colima 실행"
+	@echo "  make colima-start-custom → 환경변수로 리소스 지정 후 실행"
+	@echo "  make colima-status      → Colima 현재 상태 출력"
+	@echo "  make colima-stop        → Colima 종료"
+	@echo ""
 	@echo "🎬 실행 및 종료:"
 	@echo "  make up-local           → 로컬 컨테이너 실행 (Octane :4000)"
 	@echo "  make up-production      → 프로덕션 컨테이너 실행"
 	@echo "  make down-local         → 로컬 컨테이너 중지 및 정리"
 	@echo "  make down-production    → 프로덕션 컨테이너 중지 및 정리"
+	@echo ""
+	@echo "🔁 재시작:"
+	@echo "  make restart-nextjs-local        → 로컬 Next.js 컨테이너 재시작"
+	@echo "  make restart-laravel-local       → 로컬 Laravel 컨테이너 재시작"
+	@echo "  make restart-mariadb-local       → 로컬 MariaDB 컨테이너 재시작"
+	@echo "  make restart-nginx-production    → 프로덕션 Nginx 컨테이너 재시작"
+	@echo "  make restart-nextjs-production   → 프로덕션 Next.js 컨테이너 재시작"
+	@echo "  make restart-laravel-production  → 프로덕션 Laravel 컨테이너 재시작"
+	@echo "  make restart-mariadb-production  → 프로덕션 MariaDB 컨테이너 재시작"
 	@echo ""
 	@echo "🧹 빌드 및 정리:"
 	@echo "  make build              → 로컬·프로덕션 이미지 재빌드"
@@ -62,6 +84,39 @@ help:
 	@echo "👉 원하는 명령어를 make 뒤에 입력하세요. (예: make up-local)"
 
 # ===============================
+# 🧊 Colima Runtime Helpers
+# ===============================
+
+colima:
+	@if colima status >/dev/null 2>&1; then \
+		echo "✅ Colima already running. Showing status..."; \
+		$(MAKE) colima-status; \
+	else \
+		echo "🚀 Colima not running. Booting up (config.yaml)..."; \
+		$(MAKE) colima-start; \
+		$(MAKE) colima-status; \
+	fi
+
+colima-start:
+	@echo "🚀 Starting Colima using ~/.colima/default/config.yaml (colima start)..."
+	@colima start
+	@echo "✅ Colima start command finished."
+
+colima-start-custom:
+	@echo "🚀 Starting Colima with custom resources (cpu=$(COLIMA_CPU), memory=$(COLIMA_MEMORY)GB, disk=$(COLIMA_DISK)GB)..."
+	@colima start --cpu $(COLIMA_CPU) --memory $(COLIMA_MEMORY) --disk $(COLIMA_DISK)
+	@echo "✅ Colima custom start command finished."
+
+colima-status:
+	@echo "🧊 Checking Colima status..."
+	@colima status || echo "⚠️ Colima가 실행 중이 아닙니다."
+
+colima-stop:
+	@echo "🛑 Stopping Colima..."
+	@colima stop || echo "⚠️ Colima가 이미 중지 상태일 수 있습니다."
+	@echo "✅ Colima stop command finished."
+
+# ===============================
 # 🚀 UP / DOWN
 # ===============================
 
@@ -92,6 +147,45 @@ down-production:
 	@echo "✅ Production containers stopped."
 
 # ===============================
+# 🔁 Restart (Local / Production)
+# ===============================
+
+restart-nextjs-local:
+	@echo "🔄 Restarting LOCAL Next.js container..."
+	$(DC) -f ./docker-compose.local.yml restart nextjs
+	@echo "✅ Local Next.js restarted."
+
+restart-laravel-local:
+	@echo "🔄 Restarting LOCAL Laravel container..."
+	$(DC) -f ./docker-compose.local.yml restart laravel
+	@echo "✅ Local Laravel restarted."
+
+restart-mariadb-local:
+	@echo "🔄 Restarting LOCAL MariaDB container..."
+	$(DC) -f ./docker-compose.local.yml restart mariadb
+	@echo "✅ Local MariaDB restarted."
+
+restart-nginx-production:
+	@echo "🔄 Restarting PRODUCTION Nginx container..."
+	$(DC) -f ./docker-compose.production.yml restart nginx
+	@echo "✅ Production Nginx restarted."
+
+restart-nextjs-production:
+	@echo "🔄 Restarting PRODUCTION Next.js container..."
+	$(DC) -f ./docker-compose.production.yml restart nextjs
+	@echo "✅ Production Next.js restarted."
+
+restart-laravel-production:
+	@echo "🔄 Restarting PRODUCTION Laravel container..."
+	$(DC) -f ./docker-compose.production.yml restart laravel
+	@echo "✅ Production Laravel restarted."
+
+restart-mariadb-production:
+	@echo "🔄 Restarting PRODUCTION MariaDB container..."
+	$(DC) -f ./docker-compose.production.yml restart mariadb
+	@echo "✅ Production MariaDB restarted."
+
+# ===============================
 # 🧩 Build / Clean / Reset
 # ===============================
 
@@ -108,8 +202,8 @@ clean:
 
 reset-docker:
 	@echo "🔥 Resetting all containers & images for this project..."
-	@docker compose -f ./docker-compose.local.yml down -v --remove-orphans || true
-	@docker compose -f ./docker-compose.production.yml down -v --remove-orphans || true
+	@$(DC) -f ./docker-compose.local.yml down -v --remove-orphans || true
+	@$(DC) -f ./docker-compose.production.yml down -v --remove-orphans || true
 	@docker image prune -af
 	@docker volume prune -f
 	@docker network prune -f
@@ -151,7 +245,7 @@ logs:
 	else \
 		excluded_service=laravel; \
 		echo "🧾 Viewing docker compose logs for all local services (excluding $$excluded_service)..."; \
-		services=$$(docker compose -f ./docker-compose.local.yml config --services | grep -v "^$$excluded_service$$"); \
+		services=$$($(DC) -f ./docker-compose.local.yml config --services | grep -v "^$$excluded_service$$"); \
 		if [ -z "$$services" ]; then \
 			echo "⚠️ No services to tail after applying exclusion."; \
 		else \
