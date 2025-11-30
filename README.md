@@ -41,6 +41,9 @@ blog/
 | `make up development` | development 환경 실행 |
 | `make up production` | production 환경 실행 |
 | `make down` | 모든 컨테이너 중지 및 정리 |
+| `make restart-docker` | Docker(Colima) 런타임 재시작 |
+| `make restart-all-local` | Docker 재시작 후 로컬 모든 컨테이너 재시작 |
+| `make restart-all-production` | Docker 재시작 후 프로덕션 모든 컨테이너 재시작 |
 | `make build` | 이미지 캐시 없이 재빌드 |
 | `make status` | 컨테이너, 환경, env 상태 요약 표시 |
 

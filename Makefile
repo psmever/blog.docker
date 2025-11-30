@@ -21,6 +21,7 @@ COLIMA_DISK ?= 60
         env-encrypt-local env-encrypt-production \
         decrypt-backend-local decrypt-backend-production \
         decrypt-frontend-local decrypt-frontend-production \
+        restart-docker restart-all-local restart-all-production \
         restart-laravel-local restart-nextjs-local restart-mariadb-local \
         restart-nginx-production restart-laravel-production restart-nextjs-production restart-mariadb-production \
         status verify-env backup-env help
@@ -42,6 +43,9 @@ help:
 	@echo "  make down-production    → 프로덕션 컨테이너 중지 및 정리"
 	@echo ""
 	@echo "🔁 재시작:"
+	@echo "  make restart-docker             → Docker(Colima) 런타임 재시작"
+	@echo "  make restart-all-local          → Docker 재시작 후 로컬 모든 컨테이너 재시작"
+	@echo "  make restart-all-production     → Docker 재시작 후 프로덕션 모든 컨테이너 재시작"
 	@echo "  make restart-nextjs-local        → 로컬 Next.js 컨테이너 재시작"
 	@echo "  make restart-laravel-local       → 로컬 Laravel 컨테이너 재시작"
 	@echo "  make restart-mariadb-local       → 로컬 MariaDB 컨테이너 재시작"
@@ -149,6 +153,32 @@ down-production:
 # ===============================
 # 🔁 Restart (Local / Production)
 # ===============================
+
+restart-docker:
+	@echo "♻️ Restarting Docker runtime (Colima)..."
+	@if command -v colima >/dev/null 2>&1; then \
+		if colima status >/dev/null 2>&1; then \
+			colima restart || { echo "⚠️ colima restart failed, trying stop/start..."; colima stop && colima start; }; \
+		else \
+			echo "⚠️ Colima not running; starting Colima..."; \
+			colima start; \
+		fi; \
+		echo "✅ Docker runtime ready."; \
+	else \
+		echo "⚠️ Colima not found. Skipping runtime restart."; \
+	fi
+
+restart-all-local:
+	@echo "🔄 Restarting Docker runtime + ALL LOCAL containers..."
+	@$(MAKE) restart-docker
+	$(DC) -f ./docker-compose.local.yml restart
+	@echo "✅ Docker runtime + all local containers restarted."
+
+restart-all-production:
+	@echo "🔄 Restarting Docker runtime + ALL PRODUCTION containers..."
+	@$(MAKE) restart-docker
+	$(DC) -f ./docker-compose.production.yml restart
+	@echo "✅ Docker runtime + all production containers restarted."
 
 restart-nextjs-local:
 	@echo "🔄 Restarting LOCAL Next.js container..."
